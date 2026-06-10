@@ -1,0 +1,5 @@
+m13sparkstreaming/hotel-weather/
+.venv/
+.idea/
+__pycache__/
+*.pyc

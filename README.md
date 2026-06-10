@@ -1,3 +1,85 @@
+# Spark Structured Streaming [Databricks]
+
+## Overview
+
+This project implements a Medallion Architecture (Bronze → Silver → Gold) using Spark Structured Streaming on Databricks. It ingests hotel and weather data, applies PII encryption, transformations, and aggregations across three Delta table layers, and visualizes the results in a Databricks Dashboard.
+
+## Architecture
+
+```
+Databricks Volume (Parquet files)
+    ↓ Auto Loader (cloudFiles)
+Bronze: hotel_weather_raw        ← encrypted PII
+    ↓ Structured Streaming
+Silver: hotel_weather_processed  ← decrypt → transform → re-encrypt PII
+    ↓ Structured Streaming
+Gold:   hotel_weather_metrics    ← aggregated metrics, decrypted PII
+    ↓
+Databricks Dashboard             ← Top 5 cities visualized
+```
+
+## Notebooks
+
+| Notebook | Description |
+|---|---|
+| `01_create_metadata.py` | Creates catalog, schemas (bronze/silver/gold) and volumes |
+| `02_load_bronze_data.py` | Auto Loader ingests parquet files into Bronze Delta table with PII encrypted |
+| `02_pii_encryption.py` | Reusable `PIIEncryptor` class with AES-256-GCM encrypt/decrypt methods |
+| `03_bronze_to_silver.py` | Decrypt → transform → re-encrypt → write to Silver Delta table |
+| `04_silver_to_gold.py` | Decrypt → aggregate metrics → write to Gold Delta table |
+| `05_gold_queries.py` | Helper queries for identifying Top 5 cities for dashboard |
+
+## PII Encryption
+
+- **Method**: AES-256-GCM using Spark built-in `aes_encrypt` / `aes_decrypt`
+- **Encrypted fields**: `name`, `address`
+- **Storage**: Encrypted as base64 strings in Bronze and Silver tables
+- **Key management**: Stored in Databricks Secret Scope (`bdcc-scope`)
+- **Gold layer**: PII stored unencrypted for analytical purposes
+
+## Streaming Configuration
+
+> ⚠️ **Note**: Due to Serverless cluster limitations, `availableNow=True` trigger is used instead of continuous streaming. This processes all available new data on each run. Checkpoints ensure no duplicate processing between runs.
+
+## Data
+
+- Source: Hotel and weather data joined by 4-character geohash
+- Partitioned by year/month/day
+- 2016 and 2017 data processed
+
+## Gold Layer Metrics
+
+For each `country`, `city`, `wthr_date`:
+- `distinct_hotels` — approximate count of unique hotels
+- `avg_temperature` — average temperature (°C)
+- `max_temperature` — maximum temperature (°C)
+- `min_temperature` — minimum temperature (°C)
+- `temperature_difference` — max - min temperature
+
+## Dashboard
+
+Top 5 cities by number of reported hotels: **Paris, London, Milan, Amsterdam, Barcelona**
+
+Each city has a line chart showing `wthr_date` on X-axis and `number_of_reported_hotels`, `avg_tmpr_c`, `max_tmpr_c`, `min_tmpr_c` on Y-axis.
+
+## Screenshots
+
+> Add screenshots here:
+> - Bronze table data
+> - ![Screenshot 2026-06-10 at 16.07.25.png](screenshots/Screenshot%202026-06-10%20at%2016.07.25.png)
+> - Silver table data (encrypted PII)
+> - ![Screenshot 2026-06-10 at 16.07.59.png](screenshots/Screenshot%202026-06-10%20at%2016.07.59.png)
+> - Gold table aggregated metrics
+> - ![Screenshot 2026-06-10 at 16.08.16.png](screenshots/Screenshot%202026-06-10%20at%2016.08.16.png)
+> - Streaming workflow execution
+> - ![Screenshot 2026-06-10 at 16.13.29.png](screenshots/Screenshot%202026-06-10%20at%2016.13.29.png)
+![Screenshot 2026-06-10 at 16.13.46.png](screenshots/Screenshot%202026-06-10%20at%2016.13.46.png)
+![Screenshot 2026-06-10 at 16.14.42.png](screenshots/Screenshot%202026-06-10%20at%2016.14.42.png)
+> - Dashboard with all 5 city charts
+![Screenshot 2026-06-10 at 16.05.29.png](screenshots/Screenshot%202026-06-10%20at%2016.05.29.png)
+
+---
+
 # SparkSQL [Databricks]
 
 ## Prerequisites
