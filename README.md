@@ -4,6 +4,17 @@
 
 This project implements a Medallion Architecture (Bronze → Silver → Gold) using Spark Structured Streaming on Databricks. It ingests hotel and weather data, applies PII encryption, transformations, and aggregations across three Delta table layers, and visualizes the results in a Databricks Dashboard.
 
+## ⚠️ Infrastructure Limitations
+
+The Terraform infrastructure (AWS VPC, S3, IAM roles, Databricks workspace provisioning) could not be deployed due to Databricks account limitations — upgrading to Enterprise plan is required for Unity Catalog and workspace creation via Terraform.
+
+**Workarounds applied:**
+- Used a pre-existing Databricks workspace directly
+- Catalog, schemas and volumes created manually via `01_create_metadata.py` instead of Terraform
+- Data stored in Databricks Volumes instead of S3
+- Notebooks deployed via Databricks CLI instead of Terraform
+- `availableNow=True` trigger used instead of continuous streaming due to Serverless cluster limitations
+
 ## Architecture
 
 ```
